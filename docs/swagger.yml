@@ -1,0 +1,439 @@
+openapi: 3.0.0
+info:
+  title: Taiga Report Generator API
+  description: |
+    API para geração de relatórios do Taiga.
+    
+    ## Rate Limiting
+    - Máximo de 100 requisições por minuto
+    - Headers de controle: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+    
+    ## Segurança
+    - Todas as requisições devem usar HTTPS
+    - Tokens não devem ser expostos em URLs
+    - Timeout padrão de 10 segundos por requisição
+  version: 1.0.0
+  contact:
+    name: Sofintech
+    email: suporte@sofintech.com.br
+    url: https://sofintech.com.br
+  license:
+    name: Proprietário
+    url: https://sofintech.com.br
+
+servers:
+  - url: https://api.taiga.io/api/v1
+    description: Servidor de Produção da API Taiga
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtido na autenticação
+
+  schemas:
+    Auth:
+      type: object
+      required:
+        - type
+        - username
+        - password
+      properties:
+        type:
+          type: string
+          enum: [normal]
+          description: Tipo de autenticação (sempre "normal" para autenticação básica)
+          example: normal
+        username:
+          type: string
+          description: Nome de usuário registrado no Taiga
+          example: usuario@exemplo.com
+        password:
+          type: string
+          format: password
+          description: Senha do usuário
+          example: "********"
+
+    AuthResponse:
+      type: object
+      properties:
+        auth_token:
+          type: string
+          description: Token JWT para autenticação em requisições subsequentes
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+        refresh:
+          type: string
+          description: Token para renovar a autenticação quando expirada
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+        expires_in:
+          type: integer
+          description: Tempo em segundos até a expiração do token
+          example: 3600
+
+    UserStory:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID único da história
+          example: 123
+        ref:
+          type: integer
+          description: Número de referência no projeto
+          example: 456
+        subject:
+          type: string
+          description: Título da história
+          example: Implementar autenticação de usuários
+        description:
+          type: string
+          description: Descrição detalhada da história
+          example: Como usuário, quero poder me autenticar no sistema...
+        status:
+          type: string
+          description: ID do status atual
+          example: new
+        status_extra_info:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Nome do status (ex: "Novo", "Em Progresso", "Concluído")
+              example: Em Progresso
+            color:
+              type: string
+              description: Cor do status em hexadecimal
+              example: "#FF9900"
+            is_closed:
+              type: boolean
+              description: Indica se é um status final
+              example: false
+        created_date:
+          type: string
+          format: date-time
+          description: Data de criação (ISO 8601)
+          example: "2024-03-15T10:30:00Z"
+        modified_date:
+          type: string
+          format: date-time
+          description: Data da última modificação
+          example: "2024-03-15T14:30:00Z"
+        finish_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data de conclusão, se finalizada
+          example: "2024-03-16T10:00:00Z"
+        project:
+          type: integer
+          description: ID do projeto
+          example: 789
+        sprint:
+          type: integer
+          nullable: true
+          description: ID do sprint, se atribuído
+          example: 45
+        watchers:
+          type: array
+          description: IDs dos usuários observando a história
+          items:
+            type: integer
+          example: [1, 2, 3]
+        assigned_to:
+          type: integer
+          nullable: true
+          description: ID do usuário designado
+          example: 123
+        is_closed:
+          type: boolean
+          description: Indica se a história está fechada/concluída
+          example: false
+        points:
+          type: object
+          description: Pontos estimados por função
+          additionalProperties:
+            type: integer
+          example:
+            developer: 5
+            tester: 3
+        priority:
+          type: integer
+          description: Nível de prioridade (1-4, sendo 4 o mais prioritário)
+          minimum: 1
+          maximum: 4
+          example: 3
+
+    Comment:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            username:
+              type: string
+              description: Nome de usuário
+              example: joao.silva
+            full_name:
+              type: string
+              description: Nome completo do usuário
+              example: João Silva
+            email:
+              type: string
+              description: Email do usuário
+              example: joao.silva@exemplo.com
+            photo:
+              type: string
+              nullable: true
+              description: URL da foto de perfil
+              example: https://exemplo.com/fotos/joao.jpg
+        comment:
+          type: string
+          description: Texto do comentário
+          example: Iniciando o desenvolvimento desta funcionalidade
+        created_at:
+          type: string
+          format: date-time
+          description: Data de criação (ISO 8601)
+          example: "2024-03-15T14:30:00Z"
+        modified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data da última modificação
+          example: "2024-03-15T15:00:00Z"
+        delete_comment_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data de exclusão do comentário
+          example: null
+        is_hidden:
+          type: boolean
+          description: Status de visibilidade do comentário
+          example: false
+        attachments:
+          type: array
+          description: Arquivos anexados ao comentário
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: ID do anexo
+                example: 1
+              name:
+                type: string
+                description: Nome do arquivo
+                example: documento.pdf
+              size:
+                type: integer
+                description: Tamanho em bytes
+                example: 1048576
+              url:
+                type: string
+                description: URL para download
+                example: https://exemplo.com/anexos/documento.pdf
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Código do erro
+          example: 400
+        message:
+          type: string
+          description: Mensagem descritiva do erro
+          example: Parâmetros inválidos
+        details:
+          type: object
+          description: Detalhes adicionais do erro
+          example:
+            field: username
+            reason: required
+
+paths:
+  /auth:
+    post:
+      summary: Autenticação de usuário
+      description: |
+        Autentica um usuário e retorna um token de acesso.
+        O token deve ser renovado quando faltar 10% do tempo para expiração.
+      operationId: authenticate
+      tags:
+        - Autenticação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Auth'
+      responses:
+        '200':
+          description: Autenticação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Credenciais inválidas ou ausentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Muitas tentativas de login
+          headers:
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+              description: Tempo em segundos para próxima tentativa
+
+  /userstories:
+    get:
+      summary: Lista histórias de usuário
+      description: |
+        Retorna a lista de histórias de usuário de um projeto.
+        Suporta paginação e inclui informações detalhadas de status.
+      operationId: getUserStories
+      tags:
+        - Histórias de Usuário
+      parameters:
+        - name: project
+          in: query
+          description: ID numérico do projeto no Taiga
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          description: Número da página para paginação
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Quantidade de itens por página
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        '200':
+          description: Lista de histórias de usuário
+          headers:
+            X-Pagination-Total:
+              schema:
+                type: integer
+              description: Total de histórias
+            X-Pagination-Pages:
+              schema:
+                type: integer
+              description: Total de páginas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserStory'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Sem permissão para acessar o projeto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Projeto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit excedido
+          headers:
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+              description: Tempo em segundos para próxima tentativa
+
+  /history/userstory/{id}:
+    get:
+      summary: Obtém comentários de uma história
+      description: |
+        Retorna a lista de comentários de uma história de usuário.
+        Inclui informações sobre anexos e modificações.
+      operationId: getComments
+      tags:
+        - Comentários
+      parameters:
+        - name: id
+          in: path
+          description: ID da história de usuário
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista de comentários
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Sem permissão para acessar a história
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: História não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit excedido
+          headers:
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+              description: Tempo em segundos para próxima tentativa
+
+tags:
+  - name: Autenticação
+    description: Operações de autenticação e gerenciamento de tokens
+  - name: Histórias de Usuário
+    description: Operações com histórias de usuário e seus status
+  - name: Comentários
+    description: Operações com comentários e histórico de modificações
