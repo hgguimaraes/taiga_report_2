@@ -35,7 +35,7 @@ O Taiga Report Generator é uma aplicação frontend que se integra com a API do
      └── assets/               # Recursos estáticos
          ├── images/
          └── styles/
-     ```
+     
 
 2. **Gerenciamento de Estado**
    - **Tecnologias:**
